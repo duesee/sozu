@@ -681,6 +681,21 @@ impl Server {
             push_queue(answer);
           }
         },
+        ProxyRequest { ref id, order: ProxyRequestData::DeactivateListener(ref deactivate) } => {
+          if deactivate.proxy == ListenerType::HTTP {
+            debug!("{} deactivate HTTP listener {:?}", id, deactivate);
+            let status = match self.http.deactivate_listener(&mut self.poll, &deactivate.front) {
+              Some(listener) => ProxyResponseStatus::Ok,
+              None => {
+                error!("Couldn't deactivate HTTP listener");
+                ProxyResponseStatus::Error(String::from("cannot deactivate HTTP listener"))
+              }
+            };
+
+            let answer = ProxyResponse { id: id.to_string(), status, data: None };
+            push_queue(answer);
+          }
+        },
         ref m => push_queue(self.http.notify(&mut self.poll, m.clone())),
       }
     }
@@ -749,6 +764,21 @@ impl Server {
               None => {
                 error!("Couldn't activate HTTPS listener");
                 ProxyResponseStatus::Error(String::from("cannot activate HTTPS listener"))
+              }
+            };
+
+            let answer = ProxyResponse { id: id.to_string(), status, data: None };
+            push_queue(answer);
+          }
+        },
+        ProxyRequest { ref id, order: ProxyRequestData::DeactivateListener(ref deactivate) } => {
+          if deactivate.proxy == ListenerType::HTTPS {
+            debug!("{} deactivate HTTPS listener {:?}", id, deactivate);
+            let status = match self.https.deactivate_listener(&mut self.poll, &deactivate.front) {
+              Some(listener) => ProxyResponseStatus::Ok,
+              None => {
+                error!("Couldn't deactivate HTTPS listener");
+                ProxyResponseStatus::Error(String::from("cannot deactivate HTTPS listener"))
               }
             };
 
@@ -830,6 +860,21 @@ impl Server {
             push_queue(answer);
           }
         },
+        ProxyRequest { ref id, order: ProxyRequestData::DeactivateListener(ref deactivate) } => {
+          if deactivate.proxy == ListenerType::TCP {
+            debug!("{} deactivate tcp listener {:?}", id, deactivate);
+            let status = match self.tcp.deactivate_listener(&mut self.poll, &deactivate.front) {
+              Some(listener) => ProxyResponseStatus::Ok,
+              None => {
+                error!("Couldn't deactivate TCP listener");
+                ProxyResponseStatus::Error(String::from("cannot deactivate TCP listener"))
+              }
+            };
+
+            let answer = ProxyResponse { id: id.to_string(), status, data: None };
+            push_queue(answer);
+          }
+        }
         m => push_queue(self.tcp.notify(&mut self.poll, m)),
       }
     }
@@ -1450,6 +1495,13 @@ impl HttpsProvider {
     }
   }
 
+  pub fn deactivate_listener(&mut self, event_loop: &mut Poll, addr: &SocketAddr) -> Option<TcpListener> {
+    match self {
+      &mut HttpsProvider::Rustls(ref mut rustls)   => rustls.deactivate_listener(event_loop, addr),
+      &mut HttpsProvider::Openssl(ref mut openssl) => openssl.deactivate_listener(event_loop, addr),
+    }
+  }
+
   pub fn give_back_listeners(&mut self) -> Vec<(SocketAddr,TcpListener)> {
     match self {
       &mut HttpsProvider::Rustls(ref mut rustls)   => rustls.give_back_listeners(),
@@ -1524,6 +1576,11 @@ impl HttpsProvider {
     rustls.activate_listener(event_loop, addr, tcp_listener)
   }
 
+  pub fn deactivate_listener(&mut self, event_loop: &mut Poll, addr: &SocketAddr) -> Option<TcpListener> {
+    let &mut HttpsProvider::Rustls(ref mut rustls) = self;
+
+    rustls.deactivate_listener(event_loop, addr)
+  }
 
   pub fn give_back_listeners(&mut self) -> Vec<(SocketAddr, TcpListener)> {
     let &mut HttpsProvider::Rustls(ref mut rustls) = self;
