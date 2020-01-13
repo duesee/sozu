@@ -61,10 +61,6 @@ fn status_token(i:&[u8]) -> IResult<&[u8], &[u8]> {
   take_while(is_status_token_char)(i)
 }
 
-fn is_ws(i: u8) -> bool {
-  i == b' ' && i == b'\t'
-}
-
 fn sp(i:&[u8]) -> IResult<&[u8], char> {
   char(' ')(i)
 }
@@ -75,9 +71,6 @@ fn crlf(i:&[u8]) -> IResult<&[u8], &[u8]> {
 
 fn is_vchar(i: u8) -> bool {
   i > 32 && i <= 126
-}
-fn is_vchar_or_ws(i: u8) -> bool {
-  is_vchar(i) || is_ws(i)
 }
 
 // allows ISO-8859-1 characters in header values
@@ -95,10 +88,6 @@ fn is_header_value_char(i: u8) -> bool {
 
 fn vchar_1(i:&[u8]) -> IResult<&[u8], &[u8]> {
   take_while(is_vchar)(i)
-}
-
-fn vchar_ws_1(i:&[u8]) -> IResult<&[u8], &[u8]> {
-  take_while(is_vchar_or_ws)(i)
 }
 
 #[derive(PartialEq,Debug,Clone)]
